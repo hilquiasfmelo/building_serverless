@@ -1,52 +1,43 @@
 import { APIGatewayProxyHandler } from "aws-lambda";
-
+import { v4 as uuidV4 } from "uuid";
 import { document } from "src/utils/dynamodbClient";
 
-interface ICreateTodo {
-  id: string;
+interface ICreateToDo {
   title: string;
-  done?: boolean;
-  deadline: Date;
+  deadline: string;
+}
+
+interface ITemplate {
+  id: string;
+  user_id: string;
+  title: string;
+  done: boolean;
+  deadline: string;
 }
 export const handle: APIGatewayProxyHandler = async (event) => {
   const { user_id } = event.pathParameters;
-  const { id, title, done = false,  deadline } = JSON.parse(event.body) as ICreateTodo;
+  const { title, deadline } = JSON.parse(event.body) as ICreateToDo;
+  const id = uuidV4();
 
-  const response = await document
-    .query({
+  const createTodo: ITemplate = {
+    id: String(id),
+    user_id,
+    title,
+    done: false,
+    deadline: new Date(deadline).toISOString(),
+  };
+
+  await document
+    .put({
       TableName: "building_serverless",
-      KeyConditionExpression: "id = :id",
-      ExpressionAttributeValues: {
-        ":id": id,
-      },
+      Item: createTodo,
     })
     .promise();
-
-  const userAlreadyExists = response.Items[0];
-
-  if (!userAlreadyExists) {
-    await document
-      .put({
-        TableName: "building_serverless",
-        Item: {
-          id,
-          user_id,
-          title,
-          done,
-          deadline: new Date(),
-        },
-      })
-      .promise();
-  }
 
   return {
     statusCode: 201,
     body: JSON.stringify({
-      id,
-      user_id,
-      title,
-      done,
-      deadline,
+      createTodo,
     }),
     headers: {
       "Content-Type": "application/json",

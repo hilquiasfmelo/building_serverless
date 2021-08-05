@@ -1,9 +1,6 @@
 service:
   name: buildingwithserverless
 
-disabledDeprecations:
-  - "*"
-
 plugins:
   - serverless-offline
   - serverless-webpack
@@ -21,36 +18,23 @@ custom:
       port: 8000
       inMemory: true
       migrate: true
-
+  
 provider:
   name: aws
-  region: us-east-1
-  runtime: nodejs14.x
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:*
-      Resource: "*"
-    - Effect: Allow
-      Action:
-        - s3:*
-      Resource: "*"
 
 functions:
-  createTodo:
+  createToDo:
     handler: src/functions/createTodo.handle
     events:
-      - http: 
+      - http:
           path: /createTodo/{user_id}
           method: POST
           cors: true
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Query
           - dynamodb:PutItem
-        Resource: "arn:aws:dynamodb:${self.provider.region}:*:table/building_serverless"
-  listTodo:
+  getAll:
     handler: src/functions/listTodo.handle
     events:
       - http:
@@ -61,11 +45,10 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:Query
-        Resource: "arn:aws:dynamodb:${self.provider.region}:*:table/building_serverless"
 
 resources:
   Resources:
-    dbBuildingServerless:
+    dbTodos:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: building_serverless
@@ -73,8 +56,12 @@ resources:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
         AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
           - AttributeName: id
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: user_id
             KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
